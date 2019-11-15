@@ -1,11 +1,13 @@
 use pam::Authenticator;
-use pam_sys::PamReturnCode;
+use pam_sys::{PamReturnCode, getenv};
 use std::io;
 use logind_dbus::LoginManager;
 use rpassword::read_password;
 use std::error::Error;
 use core::fmt;
 use std::fmt::Debug;
+use nix::unistd::{fork, ForkResult};
+use std::process::Command;
 
 #[derive(Debug)]
 enum ErrorKind {
@@ -95,13 +97,31 @@ fn authenticate() -> Result<LoginManager, ErrorKind>{
 
     authenticator.open_session().map_err(|_| ErrorKind::SessionError)?;
 
+
     Ok(logind_manager)
 }
 
 fn main() -> io::Result<()>{
 
-    while let Err(_) = authenticate() {}
-    // We are in bois
+    let mut auth: Result<LoginManager, ErrorKind>;
+
+    loop {
+        auth = authenticate();
+
+        if let Ok(manager) = auth {
+            break;
+        }
+    }
+
+    match fork() {
+        Ok(ForkResult::Child) => {
+//            println!("{}", std::env::var("USER").unwrap());
+            Command::new("exec /bin/bash --login .xinitrc");
+        }
+        _ => {
+            loop {}
+        }
+    }
 
 
     // ask for user / pass
