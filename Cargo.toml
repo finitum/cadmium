@@ -1,0 +1,11 @@
+[package]
+name = "lighterDM"
+version = "0.1.0"
+authors = ["Victor Roest <victor@xirion.net>"]
+edition = "2018"
+
+[dependencies]
+logind-dbus="0.1.1"
+rpassword="4.0.1"
+pam="0.7.0"
+pam-sys="0.5.6"
