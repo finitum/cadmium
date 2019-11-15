@@ -3,7 +3,7 @@ Description=CaDMium
 After=systemd-user-sessions.service
 
 [Service]
-ExecStart=/path/to/my/display-manager
+ExecStart=/usr/bin/cadmium
 
 [Install]
 Alias=display-manager.service
