@@ -1,5 +1,5 @@
 [package]
-name = "lighterDM"
+name = "CaDMium"
 version = "0.1.0"
 authors = ["Victor Roest <victor@xirion.net>"]
 edition = "2018"
