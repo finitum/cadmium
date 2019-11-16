@@ -11,6 +11,6 @@ jobs:
     - uses: actions/checkout@v1
     - name: Build
       run: |
-        apt-get update -y
-        apt-get install libdbus-glib-1-dev
+        sudo apt-get update -y
+        sudo apt-get install libdbus-glib-1-dev -y
         cargo build --verbose
