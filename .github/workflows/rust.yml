@@ -10,4 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Build
-      run: cargo build --verbose
+      run: |
+        apt-get update -y
+        apt-get install libdbus-glib-1-dev
+        cargo build --verbose
