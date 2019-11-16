@@ -12,5 +12,6 @@ jobs:
     - name: Build
       run: |
         sudo apt-get update -y
-        sudo apt-get install libdbus-glib-1-dev -y
+        sudo apt-get install libdbus-glib-1-dev libpam0g-dev -y
         cargo build --verbose
+        
