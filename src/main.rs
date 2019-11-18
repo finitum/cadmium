@@ -1,128 +1,94 @@
-use pam::Authenticator;
-use pam_sys::{PamReturnCode, getenv};
-use std::io;
-use logind_dbus::LoginManager;
-use rpassword::read_password;
-use std::error::Error;
-use core::fmt;
-use std::fmt::Debug;
-use nix::unistd::{fork, ForkResult};
+use crate::error::ErrorKind;
+use nix::unistd::{ForkResult, setgid, Gid, initgroups, setuid, Uid, fork};
+use users::get_user_by_name;
+use std::ffi::CString;
+use std::env::set_current_dir;
+use crate::login::authenticate;
+use crate::x::start_x;
+use std::path::Path;
 use std::process::Command;
 
-#[derive(Debug)]
-enum ErrorKind {
-    InhibitationError,
-    IoError,
-    AuthenticationError,
-    SessionError
+pub mod askpass;
+pub mod error;
+pub mod login;
+pub mod x;
+pub mod dbus;
 
-}
-impl Error for ErrorKind {}
-impl fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <dyn Debug>::fmt(self, f)
-    }
-}
+fn main() -> Result<(), ErrorKind>{
 
-struct UserInfo {
-    username: String,
-    password: String,
-}
+    let tty = 2;
+    let de = "bspwm";
 
-fn simple_get_credentials() -> io::Result<UserInfo> {
-    let mut username = String::new();
-    io::stdin().read_line(&mut username)?;
-    username.truncate(username.trim_end().len());
-    let password = read_password()?;
-
-    Ok(UserInfo {
-        username,
-        password
-    })
-}
-
-fn authenticate() -> Result<LoginManager, ErrorKind>{
-    let logind_manager = LoginManager::new().expect("Could not get logind-manager");
-
-    let mut authenticator = Authenticator::with_password("system-auth")
-        .expect("Failed to init PAM client.");
-
-    // block where we inhibit suspend
-    {
-        let suspend_lock = logind_manager.connect().inhibit_suspend("LighterDM", "login").map_err(|_| ErrorKind::InhibitationError)?;
-
-        let login_info = simple_get_credentials().map_err(|_| ErrorKind::IoError)?;
-
-        authenticator.get_handler().set_credentials(login_info.username, login_info.password);
-
-
-
-        match authenticator.authenticate() {
-            Err(e)=>  {
-                if e.to_string() == PamReturnCode::PERM_DENIED.to_string() {
-                    println!("Permission denied.");
-                } else if e.to_string() == PamReturnCode::AUTH_ERR.to_string() {
-                    #[cfg(debug_assertions)]
-                    dbg!("AUTH_ERR");
-
-                    println!("Authentication error.");
-                } else if e.to_string() == PamReturnCode::USER_UNKNOWN.to_string() {
-                    #[cfg(debug_assertions)]
-                    dbg!("USER_UNKNOWN");
-
-                    println!("Authentication error.");
-                } else if e.to_string() == PamReturnCode::MAXTRIES.to_string() {
-                    println!("Maximum login attempts reached.");
-                } else if e.to_string() == PamReturnCode::CRED_UNAVAIL.to_string() {
-                    println!("Underlying authentication service can not retrieve user credentials unavailable.");
-                } else if e.to_string() == PamReturnCode::ACCT_EXPIRED.to_string() {
-                    println!("Account expired");
-                } else if e.to_string() == PamReturnCode::CRED_EXPIRED.to_string() {
-                    println!("Account  expired");
-                } else if e.to_string() == PamReturnCode::TRY_AGAIN.to_string() {
-                    println!("PAM fucked up, please try again");
-                } else if e.to_string() == PamReturnCode::ABORT.to_string() {
-                    println!("user's authentication token has expired");
-                } else if e.to_string() == PamReturnCode::INCOMPLETE.to_string() {
-                    println!("We fucked up, please try again");
-                } else {
-                    println!("A PAM error occurred: {}", e);
-                }
-
-                return Err(ErrorKind::AuthenticationError)
-            }
-            Ok(_) => ()
-        };
-    }
-
-    authenticator.open_session().map_err(|_| ErrorKind::SessionError)?;
-
-
-    Ok(logind_manager)
-}
-
-fn main() -> io::Result<()>{
-
-    let mut auth: Result<LoginManager, ErrorKind>;
-
-    loop {
-        auth = authenticate();
-
-        if let Ok(manager) = auth {
-            break;
+    // de-hardcode 2
+    match chvt::chvt(tty) {
+        Ok(_) => (),
+        Err(_) => {
+            println!("Could not change console");
         }
-    }
+    };
+
+    let (user_info, logind_manager) = loop {
+        match authenticate(tty as u32) {
+            Ok(i) => break i,
+            Err(e) => match e {
+                ErrorKind::AuthenticationError => continue,
+                _ => {
+                    println!("Couldn't authenticate: ");
+                    return Err(e);
+                },
+            }
+        }
+    };
+//
+//    if !logind_manager.is_connected() {
+//        println!("Couldn't start DBus: ");
+//        return Err(ErrorKind::DBusError);
+//    }
 
     match fork() {
         Ok(ForkResult::Child) => {
-//            println!("{}", std::env::var("USER").unwrap());
-            Command::new("exec /bin/bash --login .xinitrc");
+
+            println!("Logged in as: {}", std::env::var("USER").unwrap());
+            println!("Current directory: {}", std::env::var("PWD").unwrap());
+
+            let homedir = std::env::var("HOME").unwrap();
+            println!("Home directory: {}", &homedir);
+
+            let user= get_user_by_name(&user_info.username).expect("Couldn't find username");
+
+            println!("user: {:?}", user);
+            println!("user id: {:?}", user.uid());
+            println!("primary group: {:?}", user.primary_group_id());
+            println!("shell: {:?}", std::env::var("SHELL").expect("no shell"));
+
+
+
+            Command::new("bash").arg("-c").arg("/etc/locale.conf").output().expect("Couldn't source language");
+
+            initgroups(
+                &CString::new(user_info.username).unwrap(),
+                Gid::from_raw(user.primary_group_id())
+            ).expect("Could not assign groups to your user");
+
+            setgid(Gid::from_raw(user.primary_group_id())).expect("Could not set GID for your user");
+
+            // No Root :(
+            setuid(Uid::from_raw(user.uid())).expect("Could not set UID for your user");
+
+            set_current_dir(&homedir).expect("Couldn't set home directory");
+
+            dbus::start_dbus();
+
+            start_x(
+                (tty + 1) as u32,
+                Path::new(&homedir),
+                de
+            ).map_err(|e| ErrorKind::XError(e)).expect("Couldn't start X");
         }
         _ => {
             loop {}
         }
     }
-
 
     // ask for user / pass
     // authenticate with pam
