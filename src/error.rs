@@ -11,6 +11,7 @@ pub enum ErrorKind {
     AuthenticationError,
     DBusError,
     SessionError,
+    ForkFailed,
     AskPassError(AskPassError),
     XError(XError),
 
