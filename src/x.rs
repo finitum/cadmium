@@ -49,7 +49,7 @@ fn get_free_display() -> Result<i32, XError>{
 }
 
 /// Create our auth file (.cdxauth).
-fn xauth(display: &String, home: &Path) -> Result<(), XError> {
+fn xauth(display: &str, home: &Path) -> Result<(), XError> {
     let xauth_path = home.join(".cdxauth");
 
     // set the XAUTHORITY environment variable
@@ -77,8 +77,7 @@ pub fn start_x(tty: u32, home: &Path, de: &str) -> Result<(), XError> {
     std::io::stdin()
         .bytes()
         .next()
-        .and_then(|result| result.ok())
-        .map(|byte| byte as i32);
+        .and_then(|result| result.ok());
 
     println!("Starting xorg process");
     let xorg_process = Command::new("/usr/bin/X")
@@ -122,6 +121,8 @@ pub fn start_x(tty: u32, home: &Path, de: &str) -> Result<(), XError> {
         .arg("-c").arg(format!("$@={}", de)).arg(include_str!("../res/xsetup.sh")).spawn().map_err(|_| XError::DEStartError)?;
     
     let _ = de_process.wait();
+
+    // Back to login screen
 
     Ok(())
 }

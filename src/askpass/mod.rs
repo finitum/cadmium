@@ -4,7 +4,6 @@ use fmt::Debug;
 
 pub mod simple;
 
-
 #[derive(Debug)]
 pub enum AskPassError {
 

@@ -45,8 +45,7 @@ pub fn authenticate(tty: u32) -> Result<(UserInfo, LoginManager), ErrorKind>{
 
         authenticator.get_handler().set_credentials(login_info.username.clone(), login_info.password);
 
-        match authenticator.authenticate() {
-            Err(e)=>  {
+        if let Err(e) = authenticator.authenticate() {
                 if e.to_string() == PamReturnCode::PERM_DENIED.to_string() {
                     println!("Permission denied.");
                 } else if e.to_string() == PamReturnCode::AUTH_ERR.to_string() {
@@ -78,8 +77,6 @@ pub fn authenticate(tty: u32) -> Result<(UserInfo, LoginManager), ErrorKind>{
                 }
 
                 return Err(ErrorKind::AuthenticationError)
-            }
-            Ok(_) => ()
         };
 
 //        logind_manager.register().map_err(|_| ErrorKind::DBusError)?;

@@ -7,7 +7,7 @@ pub fn simple_get_credentials() -> io::Result<UserInfo> {
 
     println!("Login:");
     print!("username: ");
-    io::stdout().flush().ok().expect("Could not flush stdout");
+    io::stdout().flush().expect("Could not flush stdout");
 
 
     let mut username = String::new();
@@ -15,7 +15,7 @@ pub fn simple_get_credentials() -> io::Result<UserInfo> {
     username.truncate(username.trim_end().len());
 
     print!("password (hidden): ");
-    io::stdout().flush().ok().expect("Could not flush stdout");
+    io::stdout().flush().expect("Could not flush stdout");
 
     let password = read_password()?;
 
