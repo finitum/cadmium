@@ -8,19 +8,17 @@ use users::get_user_by_name;
 use std::env;
 
 fn xdg(tty: u32, _uid: u32) {
-//    let user = format!("/run/user/{}", uid);
-//    env::set_var("XDG_RUNTIME_DIR", format!("/run/user/{}", uid));
-
     env::set_var("XDG_SESSION_CLASS", "greeter");
 
-    //TODO: should be seat{display}. might need to move to a place where we actually know the display.
+    // seat0 is the "special" seat, meant for non-multiseat DMs / the first instance of a multiseat DM
     env::set_var("XDG_SEAT", "seat0");
 
     env::set_var("XDG_VTNR", format!("{}", tty));
     env::set_var("XDG_SESSION_ID", "1");
 
-    // temp
-//    env::set_var("DBUS_SESSION_BUS_ADDRESS", format!("unix:path=/run/user/{}/bus", uid));
+    if env::var("XDG_DATA_DIRS").is_err() {
+        env::set_var("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/")
+    }
 
     env::set_var("XDG_SESSION_TYPE", "tty");
 }
