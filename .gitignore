@@ -176,3 +176,8 @@ tags
 [._]*.un~
 
 # End of https://www.gitignore.io/api/vim,rust,floobits,clion+all,intellij+all
+
+
+## PKGBUILD creation
+/cadmium-*
+pkg/
