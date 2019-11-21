@@ -4,17 +4,17 @@ use users::get_user_by_name;
 use std::ffi::CString;
 use std::env::set_current_dir;
 use crate::login::authenticate;
-use crate::x::start_x;
 use std::path::Path;
 use std::process::Command;
 use users::os::unix::UserExt;
 use std::time::Duration;
+use crate::displayservers::DisplayServer;
 
-pub mod askpass;
+mod askpass;
 pub mod error;
-pub mod login;
-pub mod x;
-pub mod dbus;
+mod login;
+mod dbus;
+mod displayservers;
 
 fn main() -> Result<(), ErrorKind>{
 
@@ -44,7 +44,13 @@ fn main() -> Result<(), ErrorKind>{
 //        println!("Couldn't start DBus: ");
 //        return Err(ErrorKind::DBusError);
 //    }
+    start_displayserver(&displayservers::x::X::new(), de);
 
+    Ok(())
+}
+
+
+pub fn start_displayserver(displayserver: &dyn DisplayServer, de: &str) {
     match fork() {
         Ok(ForkResult::Child) => {
 
@@ -63,9 +69,10 @@ fn main() -> Result<(), ErrorKind>{
             println!("primary group: {:?}", user.primary_group_id());
             println!("Home directory: {}", &homedir.display());
 
-
             // Source locale.conf to set LANG appropriately
             Command::new("bash").arg("-c").arg("/etc/locale.conf").output().expect("Couldn't source language");
+
+            displayserver.pre_suid();
 
             initgroups(
                 &CString::new(user_info.username).unwrap(),
@@ -81,9 +88,9 @@ fn main() -> Result<(), ErrorKind>{
 
 //            dbus::start_dbus();
 
-            start_x(
+            displayserver.post_suid(
                 (tty + 1) as u32, // Start X on tty+1 so that we keep logs here
-                Path::new(&homedir),
+                &user,
                 de
             ).expect("Couldn't start X");
 
@@ -97,6 +104,4 @@ fn main() -> Result<(), ErrorKind>{
         }
         Err(_) => return Err(ErrorKind::ForkFailed)
     }
-
-    Ok(())
 }

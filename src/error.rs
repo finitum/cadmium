@@ -2,7 +2,7 @@ use core::fmt;
 use std::error::Error;
 use crate::askpass::AskPassError;
 use fmt::Debug;
-use crate::x::XError;
+use crate::displayservers::DisplayServerError;
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -13,7 +13,7 @@ pub enum ErrorKind {
     SessionError,
     ForkFailed,
     AskPassError(AskPassError),
-    XError(XError),
+    DisplayServerError(DisplayServerError)
 
 }
 impl Error for ErrorKind {}
