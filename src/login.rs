@@ -1,6 +1,6 @@
 use crate::askpass::UserInfo;
 use crate::error::ErrorKind;
-use pam_sys::PamReturnCode;
+use pam::pam_sys::PamReturnCode;
 use crate::askpass::simple::simple_get_credentials;
 use logind_dbus::LoginManager;
 use pam::Authenticator;

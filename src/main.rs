@@ -51,7 +51,6 @@ fn main() -> Result<(), ErrorKind>{
             // Get some user info
             let user= get_user_by_name(&user_info.username).expect("Couldn't find username");
             let homedir = user.home_dir();
-            let homedir = user.home_dir();
 
             // Print some debugging info from ENV
             println!("Logged in as: {}", std::env::var("USER").expect("USER is not set"));
