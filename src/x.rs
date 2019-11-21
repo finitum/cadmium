@@ -79,6 +79,7 @@ pub fn start_x(tty: u32, home: &Path, de: &str) -> Result<(), XError> {
         .next()
         .and_then(|result| result.ok());
 
+    // TODO: Start this earlier as root
     println!("Starting xorg process");
     let xorg_process = Command::new("/usr/bin/X")
         .args(&[&display, &format!("vt{}", tty)])
@@ -123,7 +124,6 @@ pub fn start_x(tty: u32, home: &Path, de: &str) -> Result<(), XError> {
     let _ = de_process.wait();
 
     // Back to login screen
-
     Ok(())
 }
 

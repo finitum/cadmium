@@ -51,6 +51,7 @@ fn main() -> Result<(), ErrorKind>{
             // Get some user info
             let user= get_user_by_name(&user_info.username).expect("Couldn't find username");
             let homedir = user.home_dir();
+            let homedir = user.home_dir();
 
             // Print some debugging info from ENV
             println!("Logged in as: {}", std::env::var("USER").expect("USER is not set"));
@@ -79,7 +80,7 @@ fn main() -> Result<(), ErrorKind>{
 
             set_current_dir(&homedir).expect("Couldn't cd to home directory");
 
-            dbus::start_dbus();
+//            dbus::start_dbus();
 
             start_x(
                 (tty + 1) as u32, // Start X on tty+1 so that we keep logs here

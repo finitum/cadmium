@@ -98,5 +98,5 @@ fi
 if [ -z "$*" ]; then
     exec xmessage -center -buttons OK:0 -default OK "Sorry, $DESKTOP_SESSION is no valid session."
 else
-    exec $@
+    exec /usr/bin/dbus-launch --exit-with-session $@
 fi
