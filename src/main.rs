@@ -15,27 +15,27 @@ pub mod error;
 pub mod login;
 pub mod x;
 pub mod dbus;
+pub mod config;
 
-fn main() -> Result<(), ErrorKind>{
+fn main() -> Result<(), ErrorKind> {
+    let config = config::config_from_file("/etc/cadmium.toml")?;
 
-    let tty = 2;
-    let de = "bspwm";
 
     // de-hardcode 2
-    if chvt::chvt(tty).is_err() {
+    if chvt::chvt(config.logtty as i32).is_err() {
         println!("Could not change console");
     };
 
     // Loop assignment _gasp_
     let (user_info, logind_manager) = loop {
-        match authenticate(tty as u32) {
+        match authenticate(config.logtty as u32) {
             Ok(i) => break i,
             Err(e) => match e {
                 ErrorKind::AuthenticationError => continue,
                 _ => {
                     println!("Couldn't authenticate: ");
                     return Err(e);
-                },
+                }
             }
         }
     };
@@ -49,7 +49,7 @@ fn main() -> Result<(), ErrorKind>{
         Ok(ForkResult::Child) => {
 
             // Get some user info
-            let user= get_user_by_name(&user_info.username).expect("Couldn't find username");
+            let user = get_user_by_name(&user_info.username).expect("Couldn't find username");
             let homedir = user.home_dir();
 
             // Print some debugging info from ENV
@@ -69,7 +69,7 @@ fn main() -> Result<(), ErrorKind>{
 
             initgroups(
                 &CString::new(user_info.username).unwrap(),
-                Gid::from_raw(user.primary_group_id())
+                Gid::from_raw(user.primary_group_id()),
             ).expect("Could not init groups for your user");
 
             setgid(Gid::from_raw(user.primary_group_id())).expect("Could not set GID for the process");
@@ -82,9 +82,9 @@ fn main() -> Result<(), ErrorKind>{
 //            dbus::start_dbus();
 
             start_x(
-                (tty + 1) as u32, // Start X on tty+1 so that we keep logs here
+                config.displaytty as u32, // Start X on tty+1 so that we keep logs here
                 Path::new(&homedir),
-                de
+                &config.de,
             ).expect("Couldn't start X");
 
             // If X closes back to login?

@@ -15,6 +15,7 @@ build() {
 
 package() {
     cd ..
-    install -Dm755 "target/release/cadmium" "${pkgdir}/usr/bin/cadmium"
+    install -Dm 755 target/release/${pkgname} -t "${pkgdir}/usr/bin"
     install -Dm644 "cadmium.service" "${pkgdir}/usr/lib/systemd/system/cadmium.service"
+    install -Dm644 "config/cadmium.toml" "${pkgdir}/etc/cadmium.toml"
 }
