@@ -41,7 +41,7 @@ pub fn authenticate(tty: u32) -> Result<(UserInfo, LoginManager), ErrorKind>{
         let user= get_user_by_name(&login_info.username).expect("Couldn't find username");
         xdg(tty as u32, user.uid());
 
-        authenticator.get_handler().set_credentials(login_info.username.clone(), login_info.password);
+        authenticator.handler_mut().set_credentials(login_info.username.clone(), login_info.password);
 
         if let Err(e) = authenticator.authenticate() {
                 if e.to_string() == PamReturnCode::PERM_DENIED.to_string() {
