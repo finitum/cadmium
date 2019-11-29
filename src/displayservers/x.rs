@@ -6,14 +6,15 @@ use std::fs::File;
 use std::fmt::Debug;
 use std::error::Error;
 use rand::Rng;
-use std::process::Command;
+use std::process::{Command, Child};
 use xcb::{Connection, ConnError};
 use nix::sys::signal::kill;
 use nix::unistd::Pid;
 use nix::errno::Errno;
-use std::io::Read;
 use users::User;
 use users::os::unix::UserExt;
+use std::thread::sleep;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum XError {
@@ -23,7 +24,8 @@ pub enum XError {
     XStartError,
     DEStartError,
     XCBConnectionError,
-    NoSHELLError
+    NoSHELLError,
+    NoDisplayError
 }
 
 impl Error for XError {}
@@ -33,33 +35,38 @@ impl fmt::Display for XError {
     }
 }
 
-pub struct X;
-
+pub struct X {
+    xcb: Option<Connection>,
+    tty: i32,
+    display: Option<String>,
+    xorg: Option<Child>,
+}
 
 impl DisplayServer for X {
-    fn pre_suid() -> Result<(), DisplayServerError> {
-        let display = format!(":{}", get_free_display()?);
+    fn pre_suid(&mut self) -> Result<(), DisplayServerError> {
+        let display = format!(":{}", Self::get_free_display()?);
+
         // set the DISPLAY environment variable
         env::set_var("DISPLAY", &display);
 
         println!("Starting xorg process");
         let xorg_process = Command::new("/usr/bin/X")
-            .args(&[&display, &format!("vt{}", tty)])
+            .args(&[&display, &format!("vt{}", self.tty)])
             .spawn().map_err(|_| XError::XStartError)?;
 
         println!("Waiting for xorg to start");
         // Wait for the process to start running
         // TODO: close xcb connection and save it somewhere in the struct(?)
-        let xcb = loop {
+        let xcb  = loop {
             if let Err(e) = kill(Pid::from_raw(xorg_process.id() as i32), None) {
                 match e.as_errno() {
                     Some(e) => match e {
                         Errno::ESRCH => {
                             continue;
                         }
-                        _ => return Err(DisplayServer(XError::XCBConnectionError))
+                        _ => return Err(DisplayServerError::XError(XError::XCBConnectionError))
                     }
-                    None => return Err(DisplayServer(XError::XCBConnectionError))
+                    None => return Err(DisplayServerError::XError(XError::XCBConnectionError))
                 }
             };
 
@@ -68,16 +75,21 @@ impl DisplayServer for X {
                 Err(e) => {
                     match e {
                         ConnError::Connection => continue,
-                        _ => return Err(DisplayServer(XError::XCBConnectionError))
+                        _ => return Err(DisplayServerError::XError(XError::XCBConnectionError))
                     }
                 }
             }
         };
 
+        self.display = Some(display);
+        self.xorg = Some(xorg_process);
+        self.xcb = Some(xcb.0);
+        Ok(())
     }
 
-    fn post_suid(user_info: User, tty: u32, de: &str) -> Result<(), DisplayServerError> {
-        xauth(&display, user_info.home_dir())?;
+    fn post_suid(&mut self, user_info: &User, de: &str) -> Result<(), DisplayServerError> {
+        let display = self.display.as_ref().ok_or(XError::NoDisplayError)?;
+        Self::xauth(display, user_info.home_dir())?;
         println!("Running DE");
 
         let mut de_process = Command::new(env::var("SHELL").map_err(|_| XError::NoSHELLError)?)
@@ -85,13 +97,22 @@ impl DisplayServer for X {
 
         let _ = de_process.wait(); // wait for the DE to exit
 
+        println!("DE stopped");
+
+        // Closes the xcb connection
+        if let Some(c) = self.xcb.take() {
+            drop(c);
+        }
+
+        println!("XCB connection closed");
+
         Ok(())
     }
 }
 
 impl X {
-    pub fn new() -> Self {
-        X { }
+    pub fn new(tty: i32) -> Self {
+        X { xcb: None, tty, display: None, xorg: None}
     }
 
     fn mcookie() -> String{
@@ -123,7 +144,7 @@ impl X {
 
         // use `xauth` to generate the xauthority file for us
         Command::new("/usr/bin/xauth")
-            .args(&["add", display, ".", &mcookie()])
+            .args(&["add", display, ".", &Self::mcookie()])
             .output().map_err(|_| XError::XAuthError)?;
 
         Ok(())
@@ -152,6 +173,6 @@ mod test {
 
     #[test]
     fn test_mcookie_same() {
-        assert_ne!(X::mcookie(), mcookie());
+        assert_ne!(X::mcookie(), X::mcookie());
     }
 }

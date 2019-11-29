@@ -19,7 +19,13 @@ impl fmt::Display for DisplayServerError {
 }
 
 pub trait DisplayServer {
-    fn pre_suid() -> Result<(), DisplayServerError>;
-    fn post_suid(user_info: &User, tty: u32, de: &str) -> Result<(), DisplayServerError>;
+    fn pre_suid(&mut self) -> Result<(), DisplayServerError>;
+    fn post_suid(&mut self, user_info: &User, de: &str) -> Result<(), DisplayServerError>;
+}
+
+impl From<XError> for DisplayServerError {
+    fn from(error: XError) -> Self {
+        Self::XError(error)
+    }
 }
 

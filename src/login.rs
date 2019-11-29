@@ -38,7 +38,10 @@ pub fn authenticate(tty: u32) -> Result<(UserInfo, LoginManager), ErrorKind>{
         // TODO: change to generic get credentials
         let login_info = simple_get_credentials().map_err(|_| ErrorKind::IoError)?;
 
-        let user= get_user_by_name(&login_info.username).expect("Couldn't find username");
+        let user= match get_user_by_name(&login_info.username){
+            Some(i) => i,
+            None => return Err(ErrorKind::AuthenticationError),
+        };
         xdg(tty as u32, user.uid());
 
         authenticator.handler_mut().set_credentials(login_info.username.clone(), login_info.password);

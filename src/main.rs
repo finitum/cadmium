@@ -4,11 +4,11 @@ use users::get_user_by_name;
 use std::ffi::CString;
 use std::env::set_current_dir;
 use crate::login::authenticate;
-use std::path::Path;
-use std::process::Command;
+use std::process::{Command, exit};
 use users::os::unix::UserExt;
-use std::time::Duration;
 use crate::displayservers::DisplayServer;
+use crate::askpass::UserInfo;
+use nix::sys::wait::{waitpid, WaitPidFlag};
 
 mod askpass;
 pub mod error;
@@ -27,7 +27,7 @@ fn main() -> Result<(), ErrorKind>{
     };
 
     // Loop assignment _gasp_
-    let (user_info, logind_manager) = loop {
+    let (user_info, _) = loop {
         match authenticate(tty as u32) {
             Ok(i) => break i,
             Err(e) => match e {
@@ -44,13 +44,15 @@ fn main() -> Result<(), ErrorKind>{
 //        println!("Couldn't start DBus: ");
 //        return Err(ErrorKind::DBusError);
 //    }
-    start_displayserver(&displayservers::x::X::new(), de);
+    start_displayserver(&mut displayservers::x::X::new(tty + 1), de, user_info)?;
 
     Ok(())
 }
 
 
-pub fn start_displayserver(displayserver: &dyn DisplayServer, de: &str) {
+pub fn start_displayserver(displayserver: &mut dyn DisplayServer, de: &str, user_info: UserInfo) -> Result<(), ErrorKind>{
+    let displaysergver_process = displayserver.pre_suid().expect("Couldn't start display server.");
+
     match fork() {
         Ok(ForkResult::Child) => {
 
@@ -72,8 +74,6 @@ pub fn start_displayserver(displayserver: &dyn DisplayServer, de: &str) {
             // Source locale.conf to set LANG appropriately
             Command::new("bash").arg("-c").arg("/etc/locale.conf").output().expect("Couldn't source language");
 
-            displayserver.pre_suid();
-
             initgroups(
                 &CString::new(user_info.username).unwrap(),
                 Gid::from_raw(user.primary_group_id())
@@ -89,19 +89,46 @@ pub fn start_displayserver(displayserver: &dyn DisplayServer, de: &str) {
 //            dbus::start_dbus();
 
             displayserver.post_suid(
-                (tty + 1) as u32, // Start X on tty+1 so that we keep logs here
                 &user,
                 de
             ).expect("Couldn't start X");
 
+            println!("Exiting user process");
             // If X closes back to login?
+
+            exit(0);
         }
         Ok(ForkResult::Parent { child }) => {
             // The parent process where we should handle reboot, lock, etc signals
-            loop {
-                std::thread::sleep(Duration::from_secs(1)) // So that the loop doesn't get optimized away
-            }
+
+            println!("Waiting for user process to exit");
+            let mut flag : WaitPidFlag = WaitPidFlag::WEXITED;
+            flag.insert(WaitPidFlag::WSTOPPED);
+            let _ = waitpid(child, Some(flag));
+            println!("User process exited, restarting authenticator");
+
+
+//        if let Some(ref mut child) = &mut self.xorg {
+//            println!("Terminating X");
+//            let _ = kill(Pid::from_raw(child.id() as i32), nix::sys::signal::SIGTERM);
+//            let mut terminated = false;
+//            for _ in 1..10{
+//                sleep(Duration::from_millis(100));
+//                if let Ok(Some(_)) = child.try_wait() {
+//                    println!("X is dead!");
+//                    terminated = true;
+//                    break;
+//                }
+//                println!("X still hasn't died, waiting for forced termination...");
+//            }
+//            if !terminated {
+//                println!("X was terminated with force");
+//                let _ = child.kill();
+//            }
+//        }
+
+            return main();
         }
         Err(_) => return Err(ErrorKind::ForkFailed)
-    }
+    };
 }
