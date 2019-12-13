@@ -19,7 +19,7 @@ mod dbus;
 mod displayservers;
 
 fn initiate_logger() {
-    Logger::with_str("info, pam=debug")
+    Logger::with_str("trace")
         .directory("/var/log/cadmium/")
         .rotate(
             Criterion::Age(Age::Day),
