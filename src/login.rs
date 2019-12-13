@@ -2,7 +2,6 @@ use crate::askpass::UserInfo;
 use crate::error::ErrorKind;
 use pam::pam_sys::PamReturnCode;
 use crate::askpass::simple::simple_get_credentials;
-use logind_dbus::LoginManager;
 use pam::Authenticator;
 use users::get_user_by_name;
 use std::env;
@@ -23,17 +22,12 @@ fn xdg(tty: u32, _uid: u32) {
     env::set_var("XDG_SESSION_TYPE", "tty");
 }
 
-pub fn authenticate(tty: u32) -> Result<(UserInfo, LoginManager), ErrorKind>{
-    let logind_manager = LoginManager::new().expect("Could not get logind-manager");
-
+pub fn authenticate(tty: u32) -> Result<UserInfo, ErrorKind>{
     let mut authenticator = Authenticator::with_password("login")
         .expect("Failed to init PAM client.");
 
     // block where we inhibit suspend
     let login_info= {
-        let _suspend_lock = logind_manager.connect()
-            .inhibit_suspend("Cadmium", "login")
-            .map_err(|_| ErrorKind::InhibitationError)?;
 
         // TODO: change to generic get credentials
         let login_info = simple_get_credentials().map_err(|_| ErrorKind::IoError)?;
@@ -82,13 +76,10 @@ pub fn authenticate(tty: u32) -> Result<(UserInfo, LoginManager), ErrorKind>{
 
 //        logind_manager.register().map_err(|_| ErrorKind::DBusError)?;
 
-        (
-            UserInfo{
-                username: login_info.username,
-                password: String::new()
-            },
-            logind_manager
-        )
+        UserInfo{
+            username: login_info.username,
+            password: String::new()
+        }
     };
 
     authenticator.open_session().map_err(|_| ErrorKind::SessionError)?;

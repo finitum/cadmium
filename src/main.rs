@@ -27,7 +27,7 @@ fn main() -> Result<(), ErrorKind>{
     };
 
     // Loop assignment _gasp_
-    let (user_info, _) = loop {
+    let user_info = loop {
         match authenticate(tty as u32) {
             Ok(i) => break i,
             Err(e) => match e {

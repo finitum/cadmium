@@ -5,7 +5,6 @@ authors = ["Victor Roest <victor@xirion.net>"]
 edition = "2018"
 
 [dependencies]
-logind-dbus="0.1.1"
 rpassword="4.0.1"
 pam = { git = "https://github.com/NULLx76/pam#3618c59c29e3478eea1eabbc01013e78dab2c663" }
 nix="0.15.0"
