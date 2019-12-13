@@ -181,3 +181,5 @@ tags
 ## PKGBUILD creation
 /cadmium-*
 pkg/
+
+*.log

@@ -12,3 +12,5 @@ users="0.9.1"
 chvt="0.2.0"
 rand="0.7.2"
 xcb="0.9.0"
+flexi_logger = {version="0.14.5", features=["ziplogs"]}
+log = "0.4.8"

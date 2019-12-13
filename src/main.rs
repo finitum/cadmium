@@ -9,6 +9,8 @@ use users::os::unix::UserExt;
 use crate::displayservers::DisplayServer;
 use crate::askpass::UserInfo;
 use nix::sys::wait::{waitpid, WaitPidFlag};
+use flexi_logger::{Duplicate, Logger, Criterion, Naming, Cleanup, Age};
+use log::{error, warn, info, debug};
 
 mod askpass;
 pub mod error;
@@ -16,14 +18,30 @@ mod login;
 mod dbus;
 mod displayservers;
 
+fn initiate_logger() {
+    Logger::with_str("info pam=debug")
+        .directory("/var/log/cadmium/")
+        .rotate(
+            Criterion::Age(Age::Day),
+            Naming::Timestamps,
+            Cleanup::KeepLogAndZipFiles(3, 15)
+        )
+        .log_to_file()
+        .duplicate_to_stderr(Duplicate::Warn)
+        .start()
+        .unwrap_or_else(|e| panic!("Logger initialization failed with {}", e));
+}
+
 fn main() -> Result<(), ErrorKind>{
+
+    initiate_logger();
 
     let tty = 2;
     let de = "bspwm";
 
     // de-hardcode 2
     if chvt::chvt(tty).is_err() {
-        println!("Could not change console");
+        error!("Could not change console");
     };
 
     // Loop assignment _gasp_
@@ -33,7 +51,7 @@ fn main() -> Result<(), ErrorKind>{
             Err(e) => match e {
                 ErrorKind::AuthenticationError => continue,
                 _ => {
-                    println!("Couldn't authenticate: ");
+                    warn!("Couldn't authenticate: ");
                     return Err(e);
                 },
             }
@@ -61,15 +79,15 @@ pub fn start_displayserver(displayserver: &mut dyn DisplayServer, de: &str, user
             let homedir = user.home_dir();
 
             // Print some debugging info from ENV
-            println!("Logged in as: {}", std::env::var("USER").expect("USER is not set"));
-            println!("Current directory: {}", std::env::var("PWD").expect("PWD is not set"));
-            println!("shell: {:?}", std::env::var("SHELL").expect("no shell"));
+            info!("Logged in as: {}", std::env::var("USER").expect("USER is not set"));
+            debug!("Current directory: {}", std::env::var("PWD").expect("PWD is not set"));
+            debug!("shell: {:?}", std::env::var("SHELL").expect("no shell"));
 
             // From User struct
-            println!("user: {:?}", user);
-            println!("user id: {:?}", user.uid());
-            println!("primary group: {:?}", user.primary_group_id());
-            println!("Home directory: {}", &homedir.display());
+            debug!("user: {:?}", user);
+            debug!("user id: {:?}", user.uid());
+            debug!("primary group: {:?}", user.primary_group_id());
+            debug!("Home directory: {}", &homedir.display());
 
             // Source locale.conf to set LANG appropriately
             Command::new("bash").arg("-c").arg("/etc/locale.conf").output().expect("Couldn't source language");
@@ -93,7 +111,7 @@ pub fn start_displayserver(displayserver: &mut dyn DisplayServer, de: &str, user
                 de
             ).expect("Couldn't start X");
 
-            println!("Exiting user process");
+            info!("Exiting user process");
             // If X closes back to login?
 
             exit(0);
@@ -101,11 +119,11 @@ pub fn start_displayserver(displayserver: &mut dyn DisplayServer, de: &str, user
         Ok(ForkResult::Parent { child }) => {
             // The parent process where we should handle reboot, lock, etc signals
 
-            println!("Waiting for user process to exit");
+            info!("Waiting for user process to exit");
             let mut flag : WaitPidFlag = WaitPidFlag::WEXITED;
             flag.insert(WaitPidFlag::WSTOPPED);
             let _ = waitpid(child, Some(flag));
-            println!("User process exited, restarting authenticator");
+            info!("User process exited, restarting authenticator");
 
 
 //        if let Some(ref mut child) = &mut self.xorg {

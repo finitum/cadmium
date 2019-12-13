@@ -15,6 +15,7 @@ use users::User;
 use users::os::unix::UserExt;
 use std::thread::sleep;
 use std::time::Duration;
+use log::{info};
 
 #[derive(Debug)]
 pub enum XError {
@@ -49,12 +50,12 @@ impl DisplayServer for X {
         // set the DISPLAY environment variable
         env::set_var("DISPLAY", &display);
 
-        println!("Starting xorg process");
+        info!("Starting xorg process");
         let xorg_process = Command::new("/usr/bin/X")
             .args(&[&display, &format!("vt{}", self.tty)])
             .spawn().map_err(|_| XError::XStartError)?;
 
-        println!("Waiting for xorg to start");
+        info!("Waiting for xorg to start");
         // Wait for the process to start running
         // TODO: close xcb connection and save it somewhere in the struct(?)
         let xcb  = loop {
@@ -88,23 +89,25 @@ impl DisplayServer for X {
     }
 
     fn post_suid(&mut self, user_info: &User, de: &str) -> Result<(), DisplayServerError> {
+        env::set_var("XDG_SESSION_CLASS", "user"); // Set session class to user after we switched to the user
+
         let display = self.display.as_ref().ok_or(XError::NoDisplayError)?;
         Self::xauth(display, user_info.home_dir())?;
-        println!("Running DE");
+        info!("Running DE");
 
         let mut de_process = Command::new(env::var("SHELL").map_err(|_| XError::NoSHELLError)?)
             .arg("-c").arg("--login").arg(format!("$@={}", de)).arg(include_str!("../../res/xsetup.sh")).spawn().map_err(|_| XError::DEStartError)?;
 
         let _ = de_process.wait(); // wait for the DE to exit
 
-        println!("DE stopped");
+        info!("DE stopped");
 
         // Closes the xcb connection
         if let Some(c) = self.xcb.take() {
             drop(c);
         }
 
-        println!("XCB connection closed");
+        info!("XCB connection closed");
 
         Ok(())
     }

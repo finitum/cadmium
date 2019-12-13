@@ -5,6 +5,7 @@ use crate::askpass::simple::simple_get_credentials;
 use pam::Authenticator;
 use users::get_user_by_name;
 use std::env;
+use log::error;
 
 fn xdg(tty: u32, _uid: u32) {
     env::set_var("XDG_SESSION_CLASS", "greeter");
@@ -41,33 +42,33 @@ pub fn authenticate(tty: u32) -> Result<UserInfo, ErrorKind>{
 
         if let Err(e) = authenticator.authenticate() {
             if e.to_string() == PamReturnCode::PERM_DENIED.to_string() {
-                println!("Permission denied.");
+                error!("Permission denied.");
             } else if e.to_string() == PamReturnCode::AUTH_ERR.to_string() {
                 #[cfg(debug_assertions)]
-                dbg!("AUTH_ERR");
+                error!("AUTH_ERR");
 
                 println!("Authentication error.");
             } else if e.to_string() == PamReturnCode::USER_UNKNOWN.to_string() {
                 #[cfg(debug_assertions)]
-                dbg!("USER_UNKNOWN");
+                error!("USER_UNKNOWN");
 
                 println!("Authentication error.");
             } else if e.to_string() == PamReturnCode::MAXTRIES.to_string() {
-                println!("Maximum login attempts reached.");
+                error!("Maximum login attempts reached.");
             } else if e.to_string() == PamReturnCode::CRED_UNAVAIL.to_string() {
-                println!("Underlying authentication service can not retrieve user credentials unavailable.");
+                error!("Underlying authentication service can not retrieve user credentials unavailable.");
             } else if e.to_string() == PamReturnCode::ACCT_EXPIRED.to_string() {
-                println!("Account expired");
+                error!("Account expired");
             } else if e.to_string() == PamReturnCode::CRED_EXPIRED.to_string() {
-                println!("Account  expired");
+                error!("Account  expired");
             } else if e.to_string() == PamReturnCode::TRY_AGAIN.to_string() {
-                println!("PAM fucked up, please try again");
+                error!("PAM fucked up, please try again");
             } else if e.to_string() == PamReturnCode::ABORT.to_string() {
-                println!("user's authentication token has expired");
+                error!("user's authentication token has expired");
             } else if e.to_string() == PamReturnCode::INCOMPLETE.to_string() {
-                println!("We fucked up, please try again");
+                error!("We fucked up, please try again");
             } else {
-                println!("A PAM error occurred: {}", e);
+                error!("A PAM error occurred: {}", e);
             }
 
             return Err(ErrorKind::AuthenticationError)
