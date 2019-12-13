@@ -93,7 +93,7 @@ impl DisplayServer for X {
         println!("Running DE");
 
         let mut de_process = Command::new(env::var("SHELL").map_err(|_| XError::NoSHELLError)?)
-            .arg("-c").arg(format!("$@={}", de)).arg(include_str!("../../res/xsetup.sh")).spawn().map_err(|_| XError::DEStartError)?;
+            .arg("-c").arg("--login").arg(format!("$@={}", de)).arg(include_str!("../../res/xsetup.sh")).spawn().map_err(|_| XError::DEStartError)?;
 
         let _ = de_process.wait(); // wait for the DE to exit
 
