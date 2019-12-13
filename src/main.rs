@@ -19,7 +19,7 @@ mod dbus;
 mod displayservers;
 
 fn initiate_logger() {
-    Logger::with_str("info pam=debug")
+    Logger::with_str("info, pam=debug")
         .directory("/var/log/cadmium/")
         .rotate(
             Criterion::Age(Age::Day),
@@ -32,9 +32,12 @@ fn initiate_logger() {
         .unwrap_or_else(|e| panic!("Logger initialization failed with {}", e));
 }
 
-fn main() -> Result<(), ErrorKind>{
-
+fn main() -> Result<(), ErrorKind> {
     initiate_logger();
+    start()
+}
+
+fn start() -> Result<(), ErrorKind>{
 
     let tty = 2;
     let de = "bspwm";
@@ -145,7 +148,7 @@ pub fn start_displayserver(displayserver: &mut dyn DisplayServer, de: &str, user
 //            }
 //        }
 
-            return main();
+            return start();
         }
         Err(_) => return Err(ErrorKind::ForkFailed)
     };
