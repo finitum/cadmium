@@ -44,7 +44,7 @@ fn main() -> Result<(), ErrorKind>{
 //        println!("Couldn't start DBus: ");
 //        return Err(ErrorKind::DBusError);
 //    }
-    start_displayserver(&mut displayservers::x::X::new(tty + 1), de, user_info)?;
+    start_displayserver(&mut displayservers::x::X::new(tty), de, user_info)?;
 
     Ok(())
 }

@@ -153,8 +153,6 @@ impl X {
 
 //pub fn start_x(tty: u32, home: &Path, de: &str) -> Result<(), XError> {
 //
-//
-//
 //    println!("{}",  String::from_utf8_lossy(&Command::new("env").output().expect("couldnt execute env").stdout));
 //    std::io::stdin()
 //        .bytes()
