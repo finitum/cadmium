@@ -89,7 +89,7 @@ impl DisplayServer for X {
     }
 
     fn post_suid(&mut self, user_info: &User, de: &str) -> Result<(), DisplayServerError> {
-        env::set_var("XDG_SESSION_CLASS", "user"); // Set session class to user after we switched to the user
+//        env::set_var("XDG_SESSION_CLASS", "user"); // Set session class to user after we switched to the user
 
         let display = self.display.as_ref().ok_or(XError::NoDisplayError)?;
         Self::xauth(display, user_info.home_dir())?;
