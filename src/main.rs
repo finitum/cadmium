@@ -33,7 +33,7 @@ fn initiate_logger() {
 }
 
 fn main() -> Result<(), ErrorKind> {
-    initiate_logger();
+//    initiate_logger();
     start()
 }
 
