@@ -8,7 +8,7 @@ use std::env;
 use log::error;
 
 fn xdg(tty: u32, _uid: u32) {
-    env::set_var("XDG_SESSION_CLASS", "greeter");
+    env::set_var("XDG_SESSION_CLASS", "user");
 
     // seat0 is the "special" seat, meant for non-multiseat DMs / the first instance of a multiseat DM
     env::set_var("XDG_SEAT", "seat0");
