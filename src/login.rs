@@ -13,7 +13,7 @@ pub fn initial_pam<'a>(tty: u32) -> Result<Authenticator<'a, PasswordConv>, PamE
     let mut authenticator = Authenticator::with_password("login")
         .expect("Failed to init PAM client.");
 
-    authenticator.open_session()?;
+    authenticator.open_session_unauthenticated()?;
 
     Ok(authenticator)
 }
