@@ -11,6 +11,7 @@ use crate::askpass::UserInfo;
 use nix::sys::wait::{waitpid, WaitPidFlag};
 use flexi_logger::{Duplicate, Logger, Criterion, Naming, Cleanup, Age};
 use log::{error, warn, info, debug};
+use std::ptr;
 
 mod askpass;
 pub mod error;
@@ -47,9 +48,11 @@ fn start() -> Result<(), ErrorKind>{
         error!("Could not change console");
     };
 
+    let mut authenticator = login::initial_pam(tty as u32).expect("opening initial pam session failed");
+
     // Loop assignment _gasp_
     let user_info = loop {
-        match authenticate(tty as u32) {
+        match authenticate(&mut authenticator,tty as u32) {
             Ok(i) => break i,
             Err(e) => match e {
                 ErrorKind::AuthenticationError => continue,
@@ -72,7 +75,7 @@ fn start() -> Result<(), ErrorKind>{
 
 
 pub fn start_displayserver(displayserver: &mut dyn DisplayServer, de: &str, user_info: UserInfo) -> Result<(), ErrorKind>{
-    let displaysergver_process = displayserver.pre_suid().expect("Couldn't start display server.");
+    displayserver.pre_suid().expect("Couldn't start display server.");
 
     match fork() {
         Ok(ForkResult::Child) => {

@@ -2,13 +2,24 @@ use crate::askpass::UserInfo;
 use crate::error::ErrorKind;
 use pam::pam_sys::PamReturnCode;
 use crate::askpass::simple::simple_get_credentials;
-use pam::Authenticator;
+use pam::{Authenticator, PasswordConv, PamError};
 use users::get_user_by_name;
 use std::env;
 use log::error;
 
-fn xdg(tty: u32, _uid: u32) {
-    env::set_var("XDG_SESSION_CLASS", "user");
+pub fn initial_pam<'a>(tty: u32) -> Result<Authenticator<'a, PasswordConv>, PamError>{
+    xdg(tty, 0, "greeter");
+
+    let mut authenticator = Authenticator::with_password("login")
+        .expect("Failed to init PAM client.");
+
+    authenticator.open_session()?;
+
+    Ok(authenticator)
+}
+
+fn xdg(tty: u32, _uid: u32, xdg_session_class: &str) {
+    env::set_var("XDG_SESSION_CLASS", xdg_session_class);
 
     // seat0 is the "special" seat, meant for non-multiseat DMs / the first instance of a multiseat DM
     env::set_var("XDG_SEAT", "seat0");
@@ -23,9 +34,9 @@ fn xdg(tty: u32, _uid: u32) {
     env::set_var("XDG_SESSION_TYPE", "tty");
 }
 
-pub fn authenticate(tty: u32) -> Result<UserInfo, ErrorKind>{
-    let mut authenticator = Authenticator::with_password("login")
-        .expect("Failed to init PAM client.");
+pub fn authenticate(authenticator: &mut Authenticator<PasswordConv>, tty: u32) -> Result<UserInfo, ErrorKind>{
+//    let mut authenticator = Authenticator::with_password("login")
+//        .expect("Failed to init PAM client.");
 
     // block where we inhibit suspend
     let login_info= {
@@ -36,7 +47,7 @@ pub fn authenticate(tty: u32) -> Result<UserInfo, ErrorKind>{
             Some(i) => i,
             None => return Err(ErrorKind::AuthenticationError),
         };
-        xdg(tty as u32, user.uid());
+        xdg(tty as u32, user.uid(), "user");
 
         authenticator.handler_mut().set_credentials(login_info.username.clone(), login_info.password);
 
