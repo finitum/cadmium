@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 rpassword="4.0.1"
-pam = { git = "https://github.com/NULLx76/pam", branch="who-needs-auth-anyway"}
+pam = { git = "https://github.com/NULLx76/pam#aa3b0fe3fc8c712be3a52f2ea7b7ac851cfdc4dd", branch="who-needs-auth-anyway"}
 nix="0.15.0"
 users="0.9.1"
 chvt="0.2.0"
